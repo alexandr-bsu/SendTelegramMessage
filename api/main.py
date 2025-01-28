@@ -74,4 +74,4 @@ async def resolve_contact(contact: str):
         return {'user_id': None}
 
 
-uvicorn.run(app)
+uvicorn.run(app, host='0.0.0.0', port=8080)
