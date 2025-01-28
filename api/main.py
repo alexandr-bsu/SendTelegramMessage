@@ -75,3 +75,4 @@ async def resolve_contact(contact: str):
 
 
 uvicorn.run(app, host='0.0.0.0', port=8080)
+# uvicorn.run(app, port=8080)
