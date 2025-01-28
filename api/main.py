@@ -57,6 +57,22 @@ async def send_message_by_contact(contact: str, date: str, client_name: Optional
     del pyro
     return {'ok': 'ok'}
 
+@app.post('/send_message_by_telegram_id')
+async def send_message_by_contact(user_id: str, date: str, client_name: Optional[str] = None):
+    pyro = Client(
+        api_id='26698245',
+        api_hash='eff1cbc9369c401acc08d2d887fab7c4',
+        name='hranitelitesttools')
+
+    message = f'Здравствуйте{f", {client_name}, у" if client_name else "! У"} вас назначена сессия на {date}. Пожалуйста, если вы планируете на ней быть, подтвердите это в  чат-боте @HraniLiveBot\n\nДля этого в чат-боте надо нажать кнопку “Спасибо, я приду”. Иначе сессия будет отменена, чтобы психолог мог взять других клиентов.'
+
+    async with pyro:
+        await pyro.send_message(user_id, message)
+
+    del pyro
+    return {'ok': 'ok'}
+
+
 
 async def resolve_contact(contact: str):
     contact = contact.replace('@', '')
