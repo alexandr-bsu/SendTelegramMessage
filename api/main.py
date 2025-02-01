@@ -89,6 +89,10 @@ async def resolve_contact(contact: str):
     except:
         return {'user_id': None}
 
+@app.get('/resolve')
+async def resolve(contact: str):
+    user_id = await resolve_contact(contact)
+    return {'user_id': user_id}
 
 uvicorn.run(app, host='0.0.0.0', port=8080)
 # uvicorn.run(app, port=8080)
