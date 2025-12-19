@@ -1,7 +1,7 @@
 from pyrogram import Client
 from pyrogram.raw.functions.contacts import ResolvePhone, ResolveUsername
-from typing import Optional
-from fastapi import FastAPI
+from typing import Optional, Annotated
+from fastapi import FastAPI, Query, HTTPException
 import uvicorn
 
 app = FastAPI()
@@ -89,6 +89,27 @@ async def resolve_contact(contact: str):
 
     except:
         return {'user_id': None}
+
+@app.post('/send_custom_message_by_contact')
+async def send_custom_message_by_contact(
+    contact: Annotated[str, Query()],
+    message: Annotated[str, Query()]
+):
+    try:
+        user_id = int(contact)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid Telegram ID format: '{contact}'")
+    
+    pyro = Client(
+        api_id='26698245',
+        api_hash='eff1cbc9369c401acc08d2d887fab7c4',
+        name='hranitelitesttools')
+
+    async with pyro:
+        await pyro.send_message(user_id, message)
+
+    del pyro
+    return {'ok': 'ok'}
 
 @app.get('/resolve')
 async def resolve(contact: str):
