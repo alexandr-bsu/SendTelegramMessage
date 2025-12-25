@@ -116,5 +116,33 @@ async def resolve(contact: str):
     user_id = await resolve_contact(contact)
     return {'user_id': user_id}
 
+@app.post('/sent_to_group')
+async def sent_to_group(
+    group_id: Annotated[str, Query()],
+    text: Annotated[str, Query()],
+    thread_id: Annotated[Optional[int], Query()] = None
+):
+    try:
+        chat_id = int(group_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid group ID format: '{group_id}'")
+    
+    pyro = Client(
+        api_id='26698245',
+        api_hash='eff1cbc9369c401acc08d2d887fab7c4',
+        name='hranitelitesttools')
+    
+    try:
+        async with pyro:
+            if thread_id is not None:
+                await pyro.send_message(chat_id, text, message_thread_id=thread_id)
+            else:
+                await pyro.send_message(chat_id, text)
+        del pyro
+        return {'ok': 'ok'}
+    except Exception as e:
+        del pyro
+        raise HTTPException(status_code=500, detail=f"Failed to send message: {str(e)}")
+
 uvicorn.run(app, host='0.0.0.0', port=8080)
 # uvicorn.run(app, port=8080)

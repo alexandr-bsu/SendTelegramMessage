@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  telegram-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: send-telegram-message
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./api:/fastapi/api
+      - ./hranitelitesttools.session:/fastapi/hranitelitesttools.session
+    restart: unless-stopped
+
