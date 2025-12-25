@@ -151,6 +151,8 @@ async def send_to_group(
             if thread_id is not None:
                 last_error = None
                 sent = False
+
+                topic_top_msg_id = thread_id
                 
                 for chat_id_variant in [chat_id, str(chat_id), int(chat_id) if isinstance(chat_id, str) and chat_id.lstrip('-').isdigit() else None]:
                     if chat_id_variant is None:
@@ -162,7 +164,8 @@ async def send_to_group(
                                 peer=peer,
                                 message=text,
                                 random_id=pyro.rnd_id(),
-                                top_msg_id=thread_id,  # ID топика (то самое число из URL)
+                                reply_to_msg_id=topic_top_msg_id,
+                                top_msg_id=topic_top_msg_id,
                             )
                         )
                         sent = True
