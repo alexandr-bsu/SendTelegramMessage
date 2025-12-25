@@ -117,7 +117,7 @@ async def resolve(contact: str):
     return {'user_id': user_id}
 
 @app.post('/send_to_group')
-async def sent_to_group(
+async def send_to_group(
     group_id: Annotated[str, Query()],
     text: Annotated[str, Query()],
     thread_id: Annotated[Optional[int], Query()] = None
@@ -135,7 +135,7 @@ async def sent_to_group(
     try:
         async with pyro:
             if thread_id is not None:
-                await pyro.send_message(chat_id, text, reply_to_message_id=thread_id)
+                await pyro.send_message(chat_id, text, message_thread_id=thread_id)
             else:
                 await pyro.send_message(chat_id, text)
         del pyro
