@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: send-telegram-message
     ports:
-      - "8080:8080"
+      - "7777:8080"
     volumes:
       - ./api:/fastapi/api
       - ./hranitelitesttools.session:/fastapi/hranitelitesttools.session
