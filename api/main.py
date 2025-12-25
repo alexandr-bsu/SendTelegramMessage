@@ -1,4 +1,4 @@
-from pyrogram import Client
+from pyrogram import Client, raw
 from pyrogram.raw.functions.contacts import ResolvePhone, ResolveUsername
 from typing import Optional, Annotated
 from fastapi import FastAPI, Query, HTTPException
@@ -122,10 +122,14 @@ async def send_to_group(
     text: Annotated[str, Query()],
     thread_id: Annotated[Optional[int], Query()] = None
 ):
+
     try:
-        chat_id = int(group_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid group ID format: '{group_id}'")
+        if group_id.lstrip('-').isdigit():
+            chat_id = int(group_id)
+        else:
+            chat_id = group_id
+    except (ValueError, AttributeError):
+        chat_id = group_id
     
     pyro = Client(
         api_id='26698245',
@@ -134,15 +138,72 @@ async def send_to_group(
     
     try:
         async with pyro:
+            try:
+                try:
+                    await pyro.get_chat(chat_id)
+                except:
+                    async for dialog in pyro.get_dialogs():
+                        if str(dialog.chat.id) == str(chat_id) or dialog.chat.id == chat_id:
+                            break
+            except:
+                pass
+            
             if thread_id is not None:
-                await pyro.send_message(chat_id, text, message_thread_id=thread_id)
+                last_error = None
+                sent = False
+                
+                for chat_id_variant in [chat_id, str(chat_id), int(chat_id) if isinstance(chat_id, str) and chat_id.lstrip('-').isdigit() else None]:
+                    if chat_id_variant is None:
+                        continue
+                    try:
+                        peer = await pyro.resolve_peer(chat_id_variant)
+                        await pyro.invoke(
+                            raw.functions.messages.SendMessage(
+                                peer=peer,
+                                message=text,
+                                random_id=pyro.rnd_id(),
+                                top_msg_id=thread_id,  # ID топика (то самое число из URL)
+                            )
+                        )
+                        sent = True
+                        break
+                    except Exception as e:
+                        last_error = e
+                        continue
+                
+                if not sent:
+                    raise Exception(f"Could not send message to thread '{thread_id}' in group ID '{group_id}': {str(last_error)}")
             else:
-                await pyro.send_message(chat_id, text)
+                last_error = None
+                sent = False
+                
+                for chat_id_variant in [chat_id, str(chat_id), int(chat_id) if isinstance(chat_id, str) and chat_id.lstrip('-').isdigit() else None]:
+                    if chat_id_variant is None:
+                        continue
+                    try:
+                        await pyro.send_message(chat_id_variant, text)
+                        sent = True
+                        break
+                    except Exception as e:
+                        last_error = e
+                        continue
+                
+                if not sent:
+                    raise Exception(f"Could not send message to group ID '{group_id}': {str(last_error)}")
+        
         del pyro
         return {'ok': 'ok'}
+    except HTTPException:
+        raise
     except Exception as e:
         del pyro
-        raise HTTPException(status_code=500, detail=f"Failed to send message: {str(e)}")
+        error_msg = str(e)
+        if "Peer id invalid" in error_msg or "PEER_ID_INVALID" in error_msg or "CHAT_NOT_FOUND" in error_msg:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Group not found or access denied. Group ID: '{group_id}'. Error: {error_msg}. Make sure the client is added to the group and has permission to send messages."
+            )
+        raise HTTPException(status_code=500, detail=f"Failed to send message: {error_msg}")
 
 uvicorn.run(app, host='0.0.0.0', port=8080)
 # uvicorn.run(app, port=8080)
