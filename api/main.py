@@ -1,10 +1,82 @@
 from pyrogram import Client, raw
 from pyrogram.raw.functions.contacts import ResolvePhone, ResolveUsername
+from pyrogram import enums
+from pyrogram.raw import types
 from typing import Optional, Annotated
 from fastapi import FastAPI, Query, HTTPException
 import uvicorn
+import re
 
 app = FastAPI()
+
+
+def parse_text(text: str) -> str:
+    """
+    Обрабатывает текст перед отправкой в Telegram:
+    - Заменяет литеральные \n на реальные переносы строк
+    - Удаляет шаблонные переменные вида {{ ... }}
+    - Оставляет HTML теги для форматирования Telegram
+    """
+    text = text.replace('\\n', '\n')
+    
+    # Удаляем шаблонные переменные вида {{ ... }}
+    text = re.sub(r'\{\{.*?\}\}', '', text, flags=re.DOTALL)
+
+    text = re.sub(r'\n\s*\n\s*\n+', '\n\n', text)
+    text = text.strip()
+    
+    return text
+
+
+def parse_html_to_entities(text: str):
+    """
+    Парсит HTML текст в entities для raw API
+    Создает entities для HTML ссылок вручную
+    """
+    entities = []
+    # Ищем все HTML ссылки
+    matches = list(re.finditer(r'<a\s+href="([^"]+)">([^<]+)</a>', text))
+    
+    if not matches:
+        return text, []
+    
+    # Собираем информацию о ссылках
+    link_info = []
+    for match in matches:
+        url = match.group(1)
+        link_text = match.group(2)
+        link_info.append({
+            'start': match.start(),
+            'end': match.end(),
+            'url': url,
+            'text': link_text
+        })
+    
+    # Строим чистый текст и вычисляем позиции
+    clean_text = ""
+    current_pos = 0
+    
+    for link in link_info:
+        # Добавляем текст до ссылки
+        clean_text += text[current_pos:link['start']]
+        # Вычисляем позицию entity в чистом тексте
+        entity_start = len(clean_text)
+        # Добавляем текст ссылки
+        clean_text += link['text']
+        # Создаем entity для ссылки
+        entities.append(
+            types.MessageEntityTextUrl(
+                offset=entity_start,
+                length=len(link['text']),
+                url=link['url']
+            )
+        )
+        current_pos = link['end']
+    
+    # Добавляем оставшийся текст
+    clean_text += text[current_pos:]
+    
+    return clean_text, entities
 
 
 async def resolve_username(username: str):
@@ -131,6 +203,9 @@ async def send_to_group(
     except (ValueError, AttributeError):
         chat_id = group_id
     
+    # Обрабатываем текст перед отправкой
+    processed_text = parse_text(text)
+    
     pyro = Client(
         api_id='26698245',
         api_hash='eff1cbc9369c401acc08d2d887fab7c4',
@@ -154,6 +229,8 @@ async def send_to_group(
 
                 topic_top_msg_id = thread_id
                 
+                message_text, entities = parse_html_to_entities(processed_text)
+                
                 for chat_id_variant in [chat_id, str(chat_id), int(chat_id) if isinstance(chat_id, str) and chat_id.lstrip('-').isdigit() else None]:
                     if chat_id_variant is None:
                         continue
@@ -162,7 +239,8 @@ async def send_to_group(
                         await pyro.invoke(
                             raw.functions.messages.SendMessage(
                                 peer=peer,
-                                message=text,
+                                message=message_text,
+                                entities=entities if entities else None,
                                 random_id=pyro.rnd_id(),
                                 reply_to_msg_id=topic_top_msg_id,
                                 top_msg_id=topic_top_msg_id,
@@ -184,7 +262,7 @@ async def send_to_group(
                     if chat_id_variant is None:
                         continue
                     try:
-                        await pyro.send_message(chat_id_variant, text)
+                        await pyro.send_message(chat_id_variant, processed_text, parse_mode=enums.ParseMode.HTML)
                         sent = True
                         break
                     except Exception as e:
