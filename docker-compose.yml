@@ -10,6 +10,5 @@ services:
       - "7777:8080"
     volumes:
       - ./api:/fastapi/api
-      - ./api/HraniInfoSession.session:/fastapi/HraniInfoSession.session
     restart: unless-stopped
 
