@@ -1,6 +1,13 @@
 /.venv/
 /.idea/
 
+# private files
+api/.env
+api/*.session
+
+# MacOS files
+.DS_Store
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -131,7 +138,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
+api/.env
 .venv
 env/
 venv/

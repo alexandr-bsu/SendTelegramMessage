@@ -10,6 +10,6 @@ services:
       - "7777:8080"
     volumes:
       - ./api:/fastapi/api
-      - ./hranitelitesttools.session:/fastapi/hranitelitesttools.session
+      - ./api/HraniInfoSession.session:/fastapi/HraniInfoSession.session
     restart: unless-stopped
 
